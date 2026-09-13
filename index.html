@@ -3,75 +3,229 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Оплата заказа</title>
+    <title>Маркетплейс</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        :root {
+            --bg-color: var(--tg-theme-bg-color, #f4f4f5);
+            --card-bg: var(--tg-theme-secondary-bg-color, #ffffff);
+            --text-color: var(--tg-theme-text-color, #000000);
+            --hint-color: var(--tg-theme-hint-color, #8e8e93);
+            --btn-color: var(--tg-theme-button-color, #2481cc);
+            --btn-text: var(--tg-theme-button-text-color, #ffffff);
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: var(--tg-theme-bg-color, #f4f4f5);
-            color: var(--tg-theme-text-color, #000);
-            padding: 16px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             margin: 0;
-        }
-        .card {
-            background: var(--tg-theme-secondary-bg-color, #fff);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-        .requisites {
-            background: rgba(36, 129, 204, 0.1);
             padding: 12px;
+            padding-bottom: 80px;
+        }
+
+        h2 { margin: 8px 0 16px 4px; font-size: 20px; }
+
+        /* Сетка товаров */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .product-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        }
+
+        .product-img {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
             border-radius: 8px;
-            margin: 12px 0;
+            background-color: #eee;
+        }
+
+        .product-title {
             font-size: 14px;
+            font-weight: 600;
+            margin: 8px 0 4px 0;
         }
-        label { display: block; font-size: 14px; margin-bottom: 6px; color: #888; }
-        select { width: 100%; padding: 10px; margin-bottom: 12px; box-sizing: border-box; }
-        button {
-            width: 100%; padding: 14px;
-            background-color: var(--tg-theme-button-color, #2481cc);
-            color: var(--tg-theme-button-text-color, #fff);
-            border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer;
+
+        .product-price {
+            font-size: 14px;
+            color: var(--btn-color);
+            font-weight: bold;
+            margin-bottom: 8px;
         }
+
+        /* Кнопки управления корзиной */
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .btn-add {
+            width: 100%;
+            padding: 8px;
+            background-color: var(--btn-color);
+            color: var(--btn-text);
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .counter-btn {
+            background: var(--btn-color);
+            color: var(--btn-text);
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .count-display { font-weight: bold; font-size: 14px; }
+
+        /* Фиксированная плашка корзины внизу */
+        .cart-bar {
+            position: fixed;
+            bottom: 12px;
+            left: 12px;
+            right: 12px;
+            background: var(--btn-color);
+            color: var(--btn-text);
+            padding: 14px 18px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            cursor: pointer;
+        }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>Оформление заказа</h2>
-        
-        <label>Выберите услугу:</label>
-        <select id="service">
-            <option value="Разработка сайта" data-price="5000">Разработка сайта (5 000 ₽)</option>
-            <option value="Telegram-бот" data-price="3000">Telegram-бот (3 000 ₽)</option>
-        </select>
 
-        <div class="requisites">
-            <strong>💳 Реквизиты для оплаты:</strong><br>
-            Карта: <code>2200 0000 0000 0000</code> (Сбер / T-Bank)<br>
-            Получатель: Иван И.
-        </div>
+    <h2>🛍️ Каталог товаров</h2>
+    <div class="products-grid" id="products-container"></div>
+
+    <!-- Подвал с корзиной -->
+    <div class="cart-bar hidden" id="cart-bar">
+        <span>Оформить заказ (<span id="total-count">0</span>)</span>
+        <span id="total-price">0 ₽</span>
     </div>
-
-    <button id="submit-btn">Перейти к оплате</button>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
-        document.getElementById('submit-btn').addEventListener('click', () => {
-            const serviceSelect = document.getElementById('service');
-            const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
+        // Тестовый каталог (в Шаге 2 мы будем получать его из БД)
+        const products = [
+            { id: 1, title: "Разработка сайта", price: 5000, img: "https://via.placeholder.com/150" },
+            { id: 2, title: "Telegram-бот", price: 3000, img: "https://via.placeholder.com/150" },
+            { id: 3, title: "UI/UX Дизайн", price: 4000, img: "https://via.placeholder.com/150" },
+            { id: 4, title: "Консультация", price: 1500, img: "https://via.placeholder.com/150" }
+        ];
+
+        const cart = {}; // Store: { productId: count }
+
+        function renderProducts() {
+            const container = document.getElementById('products-container');
+            container.innerHTML = '';
+
+            products.forEach(p => {
+                const count = cart[p.id] || 0;
+                const card = document.createElement('div');
+                card.className = 'product-card';
+
+                card.innerHTML = `
+                    <img src="${p.img}" class="product-img" alt="${p.title}">
+                    <div class="product-title">${p.title}</div>
+                    <div class="product-price">${p.price.toLocaleString()} ₽</div>
+                    <div class="controls">
+                        ${count === 0 ? `
+                            <button class="btn-add" onclick="updateCart(${p.id}, 1)">В корзину</button>
+                        ` : `
+                            <button class="counter-btn" onclick="updateCart(${p.id}, -1)">-</button>
+                            <span class="count-display">${count}</span>
+                            <button class="counter-btn" onclick="updateCart(${p.id}, 1)">+</button>
+                        `}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            updateCartBar();
+        }
+
+        function updateCart(productId, delta) {
+            const current = cart[productId] || 0;
+            const newCount = current + delta;
+
+            if (newCount > 0) {
+                cart[productId] = newCount;
+            } else {
+                delete cart[productId];
+            }
+
+            renderProducts();
+        }
+
+        function updateCartBar() {
+            const cartBar = document.getElementById('cart-bar');
+            let totalCount = 0;
+            let totalPrice = 0;
+
+            Object.keys(cart).forEach(id => {
+                const product = products.find(p => p.id == id);
+                const count = cart[id];
+                totalCount += count;
+                totalPrice += product.price * count;
+            });
+
+            if (totalCount > 0) {
+                cartBar.classList.remove('hidden');
+                document.getElementById('total-count').innerText = totalCount;
+                document.getElementById('total-price').innerText = totalPrice.toLocaleString() + ' ₽';
+            } else {
+                cartBar.classList.add('hidden');
+            }
+        }
+
+        // Отправка заказа в бот
+        document.getElementById('cart-bar').addEventListener('click', () => {
+            const orderItems = Object.keys(cart).map(id => {
+                const product = products.find(p => p.id == id);
+                return {
+                    id: product.id,
+                    title: product.title,
+                    price: product.price,
+                    count: cart[id]
+                };
+            });
 
             const orderData = {
-                service: selectedOption.value,
-                price: selectedOption.getAttribute('data-price')
+                items: orderItems,
+                total: orderItems.reduce((sum, item) => sum + (item.price * item.count), 0)
             };
 
             tg.sendData(JSON.stringify(orderData));
         });
+
+        renderProducts();
     </script>
 </body>
 </html>
