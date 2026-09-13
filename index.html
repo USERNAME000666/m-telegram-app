@@ -3,23 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мой Telegram Mini App</title>
-    <!-- Официальный SDK Telegram -->
+    <title>Оформление заказа</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--tg-theme-bg-color, #ffffff);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--tg-theme-bg-color, #f4f4f5);
             color: var(--tg-theme-text-color, #000000);
-            padding: 20px;
-            text-align: center;
+            padding: 16px;
             margin: 0;
         }
-        .container {
-            margin-top: 50px;
+        .card {
+            background: var(--tg-theme-secondary-bg-color, #ffffff);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        label {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 6px;
+            color: var(--tg-theme-hint-color, #888);
+        }
+        select, input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+            background-color: var(--tg-theme-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
         }
         button {
-            padding: 14px 24px;
+            width: 100%;
+            padding: 14px;
             background-color: var(--tg-theme-button-color, #2481cc);
             color: var(--tg-theme-button-text-color, #ffffff);
             border: none;
@@ -27,33 +46,48 @@
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 20px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1 id="user-greeting">Привет!</h1>
-        <p>Добро пожаловать в Telegram Mini App.</p>
-        <button id="send-btn">Отправить данные боту</button>
+    <div class="card">
+        <h2 id="greeting">Оформление заявки</h2>
+        
+        <label for="service">Выберите услугу:</label>
+        <select id="service">
+            <option value="Разработка сайта" data-price="5000">Разработка сайта (5 000 ₽)</option>
+            <option value="Создание Telegram-бота" data-price="3000">Создание Telegram-бота (3 000 ₽)</option>
+            <option value="Дизайн интерфейса" data-price="4000">Дизайн интерфейса (4 000 ₽)</option>
+        </select>
+
+        <label for="comment">Комментарий к тексту/ТЗ:</label>
+        <input type="text" id="comment" placeholder="Например: Нужен сайт-визитка">
     </div>
+
+    <button id="submit-btn">Отправить заявку</button>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Разворачиваем окно на весь экран
+        tg.expand();
 
-        // Автоматически подставляем имя пользователя из Telegram
+        // Подставляем имя пользователя
         if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-            document.getElementById('user-greeting').innerText = `Привет, ${tg.initDataUnsafe.user.first_name}! 👋`;
+            document.getElementById('greeting').innerText = `Заявка от ${tg.initDataUnsafe.user.first_name}`;
         }
 
-        // Отправка данных обратно в бота по клику
-        document.getElementById('send-btn').addEventListener('click', () => {
-            tg.sendData(JSON.stringify({
-                status: "success",
-                message: "Привет из Mini App!"
-            }));
+        // Обработка клика по кнопке
+        document.getElementById('submit-btn').addEventListener('click', () => {
+            const serviceSelect = document.getElementById('service');
+            const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
+            
+            const orderData = {
+                service: selectedOption.value,
+                price: selectedOption.getAttribute('data-price'),
+                comment: document.getElementById('comment').value || "Без комментария"
+            };
+
+            // Отправляем структурированный JSON боту
+            tg.sendData(JSON.stringify(orderData));
         });
     </script>
 </body>
