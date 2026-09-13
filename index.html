@@ -28,19 +28,18 @@
             font-size: 14px;
         }
         label { display: block; font-size: 14px; margin-bottom: 6px; color: #888; }
-        select, input[type="file"] { width: 100%; padding: 10px; margin-bottom: 12px; box-sizing: border-box; }
+        select { width: 100%; padding: 10px; margin-bottom: 12px; box-sizing: border-box; }
         button {
             width: 100%; padding: 14px;
             background-color: var(--tg-theme-button-color, #2481cc);
             color: var(--tg-theme-button-text-color, #fff);
             border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer;
         }
-        #status { text-align: center; color: #888; font-size: 14px; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2>Оформление и оплата</h2>
+        <h2>Оформление заказа</h2>
         
         <label>Выберите услугу:</label>
         <select id="service">
@@ -53,77 +52,25 @@
             Карта: <code>2200 0000 0000 0000</code> (Сбер / T-Bank)<br>
             Получатель: Иван И.
         </div>
-
-        <label>Прикрепите скриншот чека:</label>
-        <input type="file" id="receipt" accept="image/*">
     </div>
 
-    <button id="submit-btn">Отправить чек на проверку</button>
-    <div id="status"></div>
+    <button id="submit-btn">Перейти к оплате</button>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        const BOT_TOKEN = "8761549728:AAFd7jTYJIlQPWs86Yv2XvM2mJ_fjtKiNx0"; // Ваш токен
-
-        document.getElementById('submit-btn').addEventListener('click', async () => {
-            const fileInput = document.getElementById('receipt');
-            const statusDiv = document.getElementById('status');
-            
-            if (!fileInput.files[0]) {
-                alert("Пожалуйста, прикрепите скриншот чека!");
-                return;
-            }
-
+        document.getElementById('submit-btn').addEventListener('click', () => {
             const serviceSelect = document.getElementById('service');
             const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
-            const userId = tg.initDataUnsafe?.user?.id || "Неизвестно";
-            const userName = tg.initDataUnsafe?.user?.first_name || "Пользователь";
 
-            statusDiv.innerText = "Отправка чека...";
+            const orderData = {
+                service: selectedOption.value,
+                price: selectedOption.getAttribute('data-price')
+            };
 
-            // Собираем данные формы и фото
-            const formData = new FormData();
-            formData.append('chat_id', userId);
-            formData.append('photo', fileInput.files[0]);
-            formData.append('caption', `🧾 **Новый чек на проверку!**\n\n👤 Пользователь: ${userName} (ID: \`${userId}\`)\n📌 Услуга: ${selectedOption.value}\n💰 Сумма: ${selectedOption.getAttribute('data-price')} ₽`);
-            formData.append('parse_mode', 'Markdown');
-
-            try {
-                // Отправляем фото напрямую в бот к пользователю (он перенаправит его админу)
-                const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (response.ok) {
-                    tg.close(); // Закрываем Mini App после успешной отправки
-                } else {
-                    statusDiv.innerText = "Ошибка отправки. Попробуйте еще раз.";
-                }
-            } catch (err) {
-                statusDiv.innerText = "Ошибка сети.";
-            }
+            tg.sendData(JSON.stringify(orderData));
         });
     </script>
-<script>
-    const tg = window.Telegram.WebApp;
-    tg.expand();
-
-    document.getElementById('submit-btn').addEventListener('click', () => {
-        const serviceSelect = document.getElementById('service');
-        const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
-
-        // Собираем выбранную услугу и цену
-        const orderData = {
-            service: selectedOption.value,
-            price: selectedOption.getAttribute('data-price')
-        };
-
-        // Передаем данные боту и закрываем окно
-        tg.sendData(JSON.stringify(orderData));
-    });
-</script>
 </body>
 </html>
