@@ -112,23 +112,17 @@
     tg.expand();
 
     document.getElementById('submit-btn').addEventListener('click', () => {
-        const fileInput = document.getElementById('receipt');
         const serviceSelect = document.getElementById('service');
         const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
 
-        if (!fileInput.files[0]) {
-            alert("Пожалуйста, выберите файл чека!");
-            return;
-        }
-
-        // Передаем данные об оплате боту
-        const data = {
+        // Собираем выбранную услугу и цену
+        const orderData = {
             service: selectedOption.value,
-            price: selectedOption.getAttribute('data-price'),
-            fileName: fileInput.files[0].name
+            price: selectedOption.getAttribute('data-price')
         };
 
-        tg.sendData(JSON.stringify(data));
+        // Передаем данные боту и закрываем окно
+        tg.sendData(JSON.stringify(orderData));
     });
 </script>
 </body>
