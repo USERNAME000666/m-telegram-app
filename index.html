@@ -1,116 +1,253 @@
-<script>
-    const tg = window.Telegram.WebApp;
-    tg.ready();
-    tg.expand();
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Магазин</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            margin: 0;
+            padding: 15px;
+            padding-bottom: 80px;
+        }
 
-    
-    const API_URL = "https://dzojb-2a05-45c2-41bb-1d01-d888-ddc2-17ab-18a6.run.pinggy-free.link/api/products";
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
 
-    let products = [];
-    const cart = {};
+        .product-card {
+            background: var(--tg-theme-secondary-bg-color, #f4f4f5);
+            border-radius: 12px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
 
-    // Загрузка товаров из БД через FastAPI
-    async function loadProducts() {
-        try {
-            const response = await fetch(API_URL);
-            products = await response.json();
+        .product-img {
+            width: 100%;
+            height: 110px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .product-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .product-price {
+            font-size: 13px;
+            color: var(--tg-theme-hint-color, #888);
+            margin-bottom: 8px;
+        }
+
+        .btn-add {
+            width: 100%;
+            background: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            padding: 8px 0;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .counter-btn {
+            background: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .count-display {
+            font-weight: bold;
+        }
+
+        #cart-bar {
+            position: fixed;
+            bottom: 15px;
+            left: 15px;
+            right: 15px;
+            background: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            padding: 14px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="products-container" class="products-grid">
+        <!-- Товары загружаются сюда -->
+    </div>
+
+    <div id="cart-bar" class="hidden">
+        <span>Оформить заказ (<span id="total-count">0</span>)</span>
+        <span id="total-price">0 ₽</span>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        const API_URL = "https://dzojb-2a05-45c2-41bb-1d01-d888-ddc2-17ab-18a6.run.pinggy-free.link/api/products";
+
+        let products = [];
+        const cart = {};
+
+        // Резервный список товаров, если сервер не ответил за 3 секунды
+        const fallbackProducts = [
+            { id: 1, title: "Разработка сайта", price: 5000, img: "https://via.placeholder.com/150" },
+            { id: 2, title: "Telegram-бот", price: 3000, img: "https://via.placeholder.com/150" },
+            { id: 3, title: "UI/UX Дизайн", price: 4000, img: "https://via.placeholder.com/150" }
+        ];
+
+        async function loadProducts() {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000); // Таймаут 3 сек
+
+            try {
+                const response = await fetch(API_URL, {
+                    signal: controller.signal,
+                    headers: { "bypass-tunnel-reminder": "true" }
+                });
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) throw new Error("HTTP error " + response.status);
+                products = await response.json();
+            } catch (e) {
+                console.log("Загрузка с сервера не удалась, используем резерв:", e);
+                products = fallbackProducts;
+            } finally {
+                renderProducts();
+            }
+        }
+
+        function renderProducts() {
+            const container = document.getElementById('products-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            products.forEach(p => {
+                const count = cart[p.id] || 0;
+                const card = document.createElement('div');
+                card.className = 'product-card';
+
+                card.innerHTML = `
+                    <img src="${p.img}" class="product-img" alt="${p.title}">
+                    <div class="product-title">${p.title}</div>
+                    <div class="product-price">${p.price.toLocaleString()} ₽</div>
+                    <div>
+                        ${count === 0 ? `
+                            <button class="btn-add" onclick="updateCart(${p.id}, 1)">В корзину</button>
+                        ` : `
+                            <div class="controls">
+                                <button class="counter-btn" onclick="updateCart(${p.id}, -1)">-</button>
+                                <span class="count-display">${count}</span>
+                                <button class="counter-btn" onclick="updateCart(${p.id}, 1)">+</button>
+                            </div>
+                        `}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            updateCartBar();
+        }
+
+        function updateCart(productId, delta) {
+            const current = cart[productId] || 0;
+            const newCount = current + delta;
+
+            if (newCount > 0) {
+                cart[productId] = newCount;
+            } else {
+                delete cart[productId];
+            }
+
             renderProducts();
-        } catch (e) {
-            console.error("Ошибка загрузки товаров из БД:", e);
-        }
-    }
-
-    function renderProducts() {
-        const container = document.getElementById('products-container');
-        if (!container) return;
-        container.innerHTML = '';
-
-        products.forEach(p => {
-            const count = cart[p.id] || 0;
-            const card = document.createElement('div');
-            card.className = 'product-card';
-
-            card.innerHTML = `
-                <img src="${p.img}" class="product-img" alt="${p.title}">
-                <div class="product-title">${p.title}</div>
-                <div class="product-price">${p.price.toLocaleString()} ₽</div>
-                <div class="controls">
-                    ${count === 0 ? `
-                        <button class="btn-add" onclick="updateCart(${p.id}, 1)">В корзину</button>
-                    ` : `
-                        <button class="counter-btn" onclick="updateCart(${p.id}, -1)">-</button>
-                        <span class="count-display">${count}</span>
-                        <button class="counter-btn" onclick="updateCart(${p.id}, 1)">+</button>
-                    `}
-                </div>
-            `;
-            container.appendChild(card);
-        });
-
-        updateCartBar();
-    }
-
-    function updateCart(productId, delta) {
-        const current = cart[productId] || 0;
-        const newCount = current + delta;
-
-        if (newCount > 0) {
-            cart[productId] = newCount;
-        } else {
-            delete cart[productId];
         }
 
-        renderProducts();
-    }
+        function updateCartBar() {
+            const cartBar = document.getElementById('cart-bar');
+            let totalCount = 0;
+            let totalPrice = 0;
 
-    function updateCartBar() {
-        const cartBar = document.getElementById('cart-bar');
-        let totalCount = 0;
-        let totalPrice = 0;
+            Object.keys(cart).forEach(id => {
+                const product = products.find(p => p.id == id);
+                if (product) {
+                    const count = cart[id];
+                    totalCount += count;
+                    totalPrice += product.price * count;
+                }
+            });
 
-        Object.keys(cart).forEach(id => {
-            const product = products.find(p => p.id == id);
-            if (product) {
-                const count = cart[id];
-                totalCount += count;
-                totalPrice += product.price * count;
+            if (totalCount > 0) {
+                cartBar.classList.remove('hidden');
+                document.getElementById('total-count').innerText = totalCount;
+                document.getElementById('total-price').innerText = totalPrice.toLocaleString() + ' ₽';
+            } else {
+                cartBar.classList.add('hidden');
+            }
+        }
+
+        document.getElementById('cart-bar').addEventListener('click', () => {
+            try {
+                const orderItems = Object.keys(cart).map(id => {
+                    const product = products.find(p => p.id == id);
+                    return {
+                        id: product.id,
+                        title: product.title,
+                        price: product.price,
+                        count: cart[id]
+                    };
+                });
+
+                const orderData = {
+                    items: orderItems,
+                    total: orderItems.reduce((sum, item) => sum + (item.price * item.count), 0)
+                };
+
+                tg.sendData(JSON.stringify(orderData));
+                tg.close();
+            } catch (e) {
+                alert("Ошибка отправки заказа: " + e.message);
             }
         });
 
-        if (totalCount > 0) {
-            cartBar.classList.remove('hidden');
-            document.getElementById('total-count').innerText = totalCount;
-            document.getElementById('total-price').innerText = totalPrice.toLocaleString() + ' ₽';
-        } else {
-            cartBar.classList.add('hidden');
-        }
-    }
-
-    // Обработчик отправки заказа
-    document.getElementById('cart-bar').addEventListener('click', () => {
-        try {
-            const orderItems = Object.keys(cart).map(id => {
-                const product = products.find(p => p.id == id);
-                return {
-                    id: product.id,
-                    title: product.title,
-                    price: product.price,
-                    count: cart[id]
-                };
-            });
-
-            const orderData = {
-                items: orderItems,
-                total: orderItems.reduce((sum, item) => sum + (item.price * item.count), 0)
-            };
-
-            tg.sendData(JSON.stringify(orderData));
-            tg.close();
-        } catch (e) {
-            alert("Ошибка клика: " + e.message);
-        }
-    });
-
-    // Запускаем автоматическую загрузку товаров при старте
-    loadProducts();
-</script>
+        loadProducts();
+    </script>
+</body>
+</html>
