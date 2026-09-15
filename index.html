@@ -108,9 +108,7 @@
 </head>
 <body>
 
-    <div id="products-container" class="products-grid">
-        <!-- Товары загружаются сюда -->
-    </div>
+    <div id="products-container" class="products-grid"></div>
 
     <div id="cart-bar" class="hidden">
         <span>Оформить заказ (<span id="total-count">0</span>)</span>
@@ -122,37 +120,45 @@
         tg.ready();
         tg.expand();
 
-       const API_URL = "https://sgkwu-2a05-45c2-41bb-1d01-a0f3-c0e2-3217-b147.run.pinggy-free.link/api/products";
+        let products = [];
+        let cart = {};
 
-async function loadProducts() {
-    try {
-        const response = await fetch(API_URL, {
-            method: "GET",
-            headers: { 
-                "X-Pinggy-No-Screen": "true",
-                "bypass-tunnel-reminder": "true" 
+        const fallbackProducts = [
+            { id: 1, title: "Разработка сайта", price: 5000, img: "https://via.placeholder.com/150" },
+            { id: 2, title: "Telegram-бот", price: 3000, img: "https://via.placeholder.com/150" }
+        ];
+
+        const API_URL = "https://sgkwu-2a05-45c2-41bb-1d01-a0f3-c0e2-3217-b147.run.pinggy-free.link/api/products";
+
+        async function loadProducts() {
+            try {
+                const response = await fetch(API_URL, {
+                    method: "GET",
+                    headers: { 
+                        "X-Pinggy-No-Screen": "true",
+                        "bypass-tunnel-reminder": "true" 
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Ошибка HTTP: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (Array.isArray(data) && data.length > 0) {
+                    products = data;
+                } else {
+                    products = fallbackProducts;
+                }
+            } catch (e) {
+                console.error("Не удалось загрузить товары с API:", e);
+                products = fallbackProducts;
+            } finally {
+                renderProducts();
             }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Ошибка HTTP: ${response.status}`);
         }
 
-        const data = await response.json();
-        
-        if (Array.isArray(data) && data.length > 0) {
-            products = data;
-        } else {
-            console.log("Массив продуктов пуст");
-        }
-    } catch (e) {
-        console.error("Не удалось загрузить товары с API:", e);
-        // Резерв включаем только если совсем нет ответа
-        products = fallbackProducts;
-    } finally {
-        renderProducts();
-    }
-}
         function renderProducts() {
             const container = document.getElementById('products-container');
             if (!container) return;
