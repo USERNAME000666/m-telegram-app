@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Магазин</title>
+    <title>Каталог товаров</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
@@ -11,8 +11,14 @@
             background-color: var(--tg-theme-bg-color, #ffffff);
             color: var(--tg-theme-text-color, #000000);
             margin: 0;
-            padding: 15px;
+            padding: 16px;
             padding-bottom: 80px;
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 20px;
+            text-align: center;
         }
 
         .products-grid {
@@ -21,237 +27,168 @@
             gap: 12px;
         }
 
-        .product-card {
-            background: var(--tg-theme-secondary-bg-color, #f4f4f5);
+        .card {
+            border: 1px solid var(--tg-theme-hint-color, #e0e0e0);
             border-radius: 12px;
             padding: 10px;
+            background: var(--tg-theme-secondary-bg-color, #f9f9f9);
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            align-items: center;
+            text-align: center;
         }
 
-        .product-img {
+        .card img {
             width: 100%;
-            height: 110px;
+            height: 100px;
             object-fit: cover;
             border-radius: 8px;
             margin-bottom: 8px;
         }
 
-        .product-title {
-            font-size: 14px;
+        .card .title {
             font-weight: 600;
+            font-size: 14px;
             margin-bottom: 4px;
         }
 
-        .product-price {
-            font-size: 13px;
-            color: var(--tg-theme-hint-color, #888);
+        .card .price {
+            color: #2ea6ff;
+            font-weight: bold;
+            font-size: 14px;
             margin-bottom: 8px;
         }
 
         .btn-add {
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 13px;
+            cursor: pointer;
             width: 100%;
-            background: var(--tg-theme-button-color, #2481cc);
-            color: var(--tg-theme-button-text-color, #ffffff);
-            border: none;
-            padding: 8px 0;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
         }
 
-        .controls {
+        .counter {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            gap: 8px;
         }
 
-        .counter-btn {
-            background: var(--tg-theme-button-color, #2481cc);
-            color: var(--tg-theme-button-text-color, #ffffff);
+        .counter button {
+            background-color: #e0e0e0;
             border: none;
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .count-display {
+            border-radius: 4px;
+            width: 24px;
+            height: 24px;
             font-weight: bold;
         }
 
-        #cart-bar {
-            position: fixed;
-            bottom: 15px;
-            left: 15px;
-            right: 15px;
-            background: var(--tg-theme-button-color, #2481cc);
-            color: var(--tg-theme-button-text-color, #ffffff);
-            padding: 14px;
-            border-radius: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: bold;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            cursor: pointer;
-        }
-
-        .hidden {
-            display: none !important;
+        #loading {
+            text-align: center;
+            font-size: 14px;
+            color: #888;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
 
-    <div id="products-container" class="products-grid"></div>
-
-    <div id="cart-bar" class="hidden">
-        <span>Оформить заказ (<span id="total-count">0</span>)</span>
-        <span id="total-price">0 ₽</span>
-    </div>
+    <h2>🛍️ Наш Каталог</h2>
+    <div id="loading">Загрузка товаров...</div>
+    <div class="products-grid" id="products-list"></div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.ready();
         tg.expand();
+        tg.MainButton.setText("ОФОРМИТЬ ЗАКАЗ");
+        tg.MainButton.hide();
 
-        let products = [];
+        // Актуальный URL вашего туннеля Pinggy
+        const API_URL = "https://zbvzw-2a05-45c2-41bb-1d01-a0f3-c0e2-3217-b147.run.pinggy-free.link";
+
         let cart = {};
+        let products = [];
 
-        const fallbackProducts = [
-            { id: 1, title: "Разработка сайта", price: 5000, img: "https://via.placeholder.com/150" },
-            { id: 2, title: "Telegram-бот", price: 3000, img: "https://via.placeholder.com/150" }
-        ];
-
-        const API_URL = "https://sgkwu-2a05-45c2-41bb-1d01-a0f3-c0e2-3217-b147.run.pinggy-free.link/api/products";
-
-        async function loadProducts() {
+        async function fetchProducts() {
             try {
-                const response = await fetch(API_URL, {
-                    method: "GET",
-                    headers: { 
-                        "X-Pinggy-No-Screen": "true",
-                        "bypass-tunnel-reminder": "true" 
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Ошибка HTTP: ${response.status}`);
-                }
-
-                const data = await response.json();
-                
-                if (Array.isArray(data) && data.length > 0) {
-                    products = data;
-                } else {
-                    products = fallbackProducts;
-                }
-            } catch (e) {
-                console.error("Не удалось загрузить товары с API:", e);
-                products = fallbackProducts;
-            } finally {
+                const response = await fetch(`${API_URL}/api/products`);
+                products = await response.json();
+                document.getElementById('loading').style.display = 'none';
                 renderProducts();
+            } catch (error) {
+                console.error("Ошибка загрузки товаров:", error);
+                document.getElementById('loading').innerText = "⚠️ Ошибка подключения к серверу";
             }
         }
 
         function renderProducts() {
-            const container = document.getElementById('products-container');
-            if (!container) return;
-            container.innerHTML = '';
+            const list = document.getElementById('products-list');
+            list.innerHTML = '';
 
             products.forEach(p => {
-                const count = cart[p.id] || 0;
+                const count = cart[p.id] ? cart[p.id].count : 0;
+                
                 const card = document.createElement('div');
-                card.className = 'product-card';
-
+                card.className = 'card';
                 card.innerHTML = `
-                    <img src="${p.img}" class="product-img" alt="${p.title}">
-                    <div class="product-title">${p.title}</div>
-                    <div class="product-price">${p.price.toLocaleString()} ₽</div>
-                    <div>
-                        ${count === 0 ? `
-                            <button class="btn-add" onclick="updateCart(${p.id}, 1)">В корзину</button>
-                        ` : `
-                            <div class="controls">
-                                <button class="counter-btn" onclick="updateCart(${p.id}, -1)">-</button>
-                                <span class="count-display">${count}</span>
-                                <button class="counter-btn" onclick="updateCart(${p.id}, 1)">+</button>
-                            </div>
-                        `}
-                    </div>
+                    <img src="${p.img}" alt="${p.title}">
+                    <div class="title">${p.title}</div>
+                    <div class="price">${p.price} ₽</div>
+                    ${count === 0 
+                        ? `<button class="btn-add" onclick="addToCart(${p.id})">Добавить</button>`
+                        : `<div class="counter">
+                             <button onclick="changeCount(${p.id}, -1)">-</button>
+                             <span>${count}</span>
+                             <button onclick="changeCount(${p.id}, 1)">+</button>
+                           </div>`
+                    }
                 `;
-                container.appendChild(card);
+                list.appendChild(card);
             });
 
-            updateCartBar();
+            updateMainButton();
         }
 
-        function updateCart(productId, delta) {
-            const current = cart[productId] || 0;
-            const newCount = current + delta;
-
-            if (newCount > 0) {
-                cart[productId] = newCount;
-            } else {
-                delete cart[productId];
-            }
-
+        function addToCart(id) {
+            const product = products.find(p => p.id === id);
+            cart[id] = { ...product, count: 1 };
             renderProducts();
         }
 
-        function updateCartBar() {
-            const cartBar = document.getElementById('cart-bar');
-            let totalCount = 0;
-            let totalPrice = 0;
-
-            Object.keys(cart).forEach(id => {
-                const product = products.find(p => p.id == id);
-                if (product) {
-                    const count = cart[id];
-                    totalCount += count;
-                    totalPrice += product.price * count;
+        function changeCount(id, delta) {
+            if (cart[id]) {
+                cart[id].count += delta;
+                if (cart[id].count <= 0) {
+                    delete cart[id];
                 }
-            });
+            }
+            renderProducts();
+        }
 
-            if (totalCount > 0) {
-                cartBar.classList.remove('hidden');
-                document.getElementById('total-count').innerText = totalCount;
-                document.getElementById('total-price').innerText = totalPrice.toLocaleString() + ' ₽';
+        function updateMainButton() {
+            const items = Object.values(cart);
+            if (items.length > 0) {
+                const total = items.reduce((sum, item) => sum + (item.price * item.count), 0);
+                tg.MainButton.setText(`ОФОРМИТЬ ЗАКАЗ (${total} ₽)`);
+                tg.MainButton.show();
             } else {
-                cartBar.classList.add('hidden');
+                tg.MainButton.hide();
             }
         }
 
-        document.getElementById('cart-bar').addEventListener('click', () => {
-            try {
-                const orderItems = Object.keys(cart).map(id => {
-                    const product = products.find(p => p.id == id);
-                    return {
-                        id: product.id,
-                        title: product.title,
-                        price: product.price,
-                        count: cart[id]
-                    };
-                });
-
-                const orderData = {
-                    items: orderItems,
-                    total: orderItems.reduce((sum, item) => sum + (item.price * item.count), 0)
-                };
-
-                tg.sendData(JSON.stringify(orderData));
-                tg.close();
-            } catch (e) {
-                alert("Ошибка отправки заказа: " + e.message);
-            }
+        Telegram.WebApp.onEvent('mainButtonClicked', function() {
+            const items = Object.values(cart);
+            const total = items.reduce((sum, item) => sum + (item.price * item.count), 0);
+            
+            tg.sendData(JSON.stringify({
+                items: items,
+                total: total
+            }));
         });
 
-        loadProducts();
+        fetchProducts();
     </script>
 </body>
-</html>
+</html>	
