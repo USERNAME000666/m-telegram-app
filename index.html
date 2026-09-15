@@ -105,18 +105,18 @@
         tg.MainButton.setText("ОФОРМИТЬ ЗАКАЗ");
         tg.MainButton.hide();
 
-        // Актуальный URL вашего туннеля Pinggy
-        const API_URL = "https://dfhxa-2a05-45c2-41bb-1d01-a0f3-c0e2-3217-b147.run.pinggy-free.link";
+        // ⚠️ ЗАМЕНИТЕ НА ВАШ АКТУАЛЬНЫЙ АДРЕС ИЗ КОНСОЛИ NGROK:
+        const API_URL = "https://ВАШ-ДОМЕН.ngrok-free.app";
 
         let cart = {};
         let products = [];
 
         async function fetchProducts() {
             try {
-                // Добавлен заголовок, обходящий приветственный экран Pinggy
+                // Добавлен заголовок ngrok-skip-browser-warning для обхода промежуточного экрана ngrok
                 const response = await fetch(`${API_URL}/api/products`, {
                     headers: {
-                        "pinggy-skip-browser-warning": "true"
+                        "ngrok-skip-browser-warning": "true"
                     }
                 });
                 products = await response.json();
