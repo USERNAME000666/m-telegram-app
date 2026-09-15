@@ -105,7 +105,6 @@
         tg.MainButton.setText("ОФОРМИТЬ ЗАКАЗ");
         tg.MainButton.hide();
 
-        // ⚠️ ЗАМЕНИТЕ НА ВАШ АКТУАЛЬНЫЙ АДРЕС ИЗ КОНСОЛИ NGROK:
         const API_URL = "https://traffic-nearby-squishier.ngrok-free.dev";
 
         let cart = {};
@@ -113,7 +112,6 @@
 
         async function fetchProducts() {
             try {
-                // Добавлен заголовок ngrok-skip-browser-warning для обхода промежуточного экрана ngrok
                 const response = await fetch(`${API_URL}/api/products`, {
                     headers: {
                         "ngrok-skip-browser-warning": "true"
@@ -138,9 +136,9 @@
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
-                    <img src="${p.img}" alt="${p.title}">
-                    <div class="title">${p.title}</div>
-                    <div class="price">${p.price} ₽</div>
+                    <img src="${p.img || 'https://via.placeholder.com/150'}" alt="${p.title}">
+                    <div class="title">#${p.id} ${p.title}</div>
+                    <div class="price">${p.price.toLocaleString()} сум</div>
                     ${count === 0 
                         ? `<button class="btn-add" onclick="addToCart(${p.id})">Добавить</button>`
                         : `<div class="counter">
@@ -176,7 +174,7 @@
             const items = Object.values(cart);
             if (items.length > 0) {
                 const total = items.reduce((sum, item) => sum + (item.price * item.count), 0);
-                tg.MainButton.setText(`ОФОРМИТЬ ЗАКАЗ (${total} ₽)`);
+                tg.MainButton.setText(`ОФОРМИТЬ ЗАКАЗ (${total.toLocaleString()} сум)`);
                 tg.MainButton.show();
             } else {
                 tg.MainButton.hide();
