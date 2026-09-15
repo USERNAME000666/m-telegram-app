@@ -122,38 +122,32 @@
         tg.ready();
         tg.expand();
 
-        const API_URL = "https://eqgvm-144-124-192-183.run.pinggy-free.link/api/products";
+       const API_URL = "https://eqgvm-144-124-192-183.run.pinggy-free.link/api/products";
 
-        let products = [];
-        const cart = {};
-
-        // Резервный список товаров, если сервер не ответил за 3 секунды
-        const fallbackProducts = [
-            { id: 1, title: "Разработка сайта", price: 5000, img: "https://via.placeholder.com/150" },
-            { id: 2, title: "Telegram-бот", price: 3000, img: "https://via.placeholder.com/150" },
-            { id: 3, title: "UI/UX Дизайн", price: 4000, img: "https://via.placeholder.com/150" }
-        ];
-
-     async function loadProducts() {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-
+async function loadProducts() {
     try {
         const response = await fetch(API_URL, {
             method: "GET",
-            mode: "cors",
-            signal: controller.signal,
             headers: { 
                 "X-Pinggy-No-Screen": "true",
                 "bypass-tunnel-reminder": "true" 
             }
         });
-        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            throw new Error(`Ошибка HTTP: ${response.status}`);
+        }
+
+        const data = await response.json();
         
-        if (!response.ok) throw new Error("HTTP error " + response.status);
-        products = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+            products = data;
+        } else {
+            console.log("Массив продуктов пуст");
+        }
     } catch (e) {
-        console.log("Загрузка с сервера не удалась, используем резерв:", e);
+        console.error("Не удалось загрузить товары с API:", e);
+        // Резерв включаем только если совсем нет ответа
         products = fallbackProducts;
     } finally {
         renderProducts();
