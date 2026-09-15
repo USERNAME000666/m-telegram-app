@@ -106,7 +106,6 @@
         tg.MainButton.hide();
 
         // Актуальный URL вашего туннеля Pinggy
-        // Новый URL из вашего скриншота:
         const API_URL = "https://dfhxa-2a05-45c2-41bb-1d01-a0f3-c0e2-3217-b147.run.pinggy-free.link";
 
         let cart = {};
@@ -114,7 +113,12 @@
 
         async function fetchProducts() {
             try {
-                const response = await fetch(`${API_URL}/api/products`);
+                // Добавлен заголовок, обходящий приветственный экран Pinggy
+                const response = await fetch(`${API_URL}/api/products`, {
+                    headers: {
+                        "pinggy-skip-browser-warning": "true"
+                    }
+                });
                 products = await response.json();
                 document.getElementById('loading').style.display = 'none';
                 renderProducts();
@@ -192,4 +196,4 @@
         fetchProducts();
     </script>
 </body>
-</html>	
+</html>
