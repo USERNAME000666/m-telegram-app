@@ -134,14 +134,17 @@
             { id: 3, title: "UI/UX Дизайн", price: 4000, img: "https://via.placeholder.com/150" }
         ];
 
-        async function loadProducts() {
+      async function loadProducts() {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3000); // Таймаут 3 сек
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // Увеличим таймаут до 5 сек
 
             try {
                 const response = await fetch(API_URL, {
                     signal: controller.signal,
-                    headers: { "bypass-tunnel-reminder": "true" }
+                    headers: { 
+                        "X-Pinggy-No-Screen": "true",
+                        "bypass-tunnel-reminder": "true" 
+                    }
                 });
                 clearTimeout(timeoutId);
                 
