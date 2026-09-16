@@ -21,11 +21,12 @@
       color: var(--text-color);
       margin: 0;
       padding: 16px;
-      padding-bottom: 90px;
+      padding-bottom: 100px;
     }
 
     h1 { 
       font-size: 20px; 
+      margin-top: 0;
       margin-bottom: 16px; 
       text-align: center; 
     }
@@ -44,6 +45,7 @@
       flex-direction: column;
       align-items: center;
       text-align: center;
+      box-sizing: border-box;
     }
 
     .product-img {
@@ -52,6 +54,7 @@
       object-fit: cover;
       border-radius: 8px;
       margin-bottom: 8px;
+      background-color: #e0e0e0;
     }
 
     .product-title { 
@@ -88,8 +91,8 @@
       background-color: var(--button-color);
       color: var(--button-text-color);
       border: none;
-      width: 28px;
-      height: 28px;
+      width: 32px;
+      height: 32px;
       border-radius: 6px;
       font-weight: bold;
       cursor: pointer;
@@ -143,13 +146,14 @@
       tg.MainButton.disable();
     }
 
-    const API_URL = "https://traffic-nearby-squishier.ngrok-free.dev/api/products"; 
+    const NGROK_BASE_URL = "https://traffic-nearby-squishier.ngrok-free.dev";
+    const API_URL = `${NGROK_BASE_URL}/api/products`; 
 
     let cart = {};
 
     async function loadProducts() {
       const container = document.getElementById("products-list");
-      container.innerHTML = "<p>Загрузка товаров...</p>";
+      container.innerHTML = "<p style='grid-column: 1/-1; text-align: center;'>Загрузка товаров...</p>";
 
       try {
         const response = await fetch(API_URL, {
@@ -157,17 +161,18 @@
             "ngrok-skip-browser-warning": "69420"
           }
         });
+        
         if (!response.ok) throw new Error("Ошибка сети: " + response.status);
         const products = await response.json();
 
         if (!products || products.length === 0) {
-          container.innerHTML = "<p>Товаров пока нет в базе.</p>";
+          container.innerHTML = "<p style='grid-column: 1/-1; text-align: center;'>Товаров пока нет в базе.</p>";
           return;
         }
         renderProducts(products);
       } catch (err) {
         console.error("Ошибка API:", err);
-        container.innerHTML = "<p style='color:red;'>Не удалось загрузить товары. Проверьте ngrok и bot.py</p>";
+        container.innerHTML = "<p style='color:red; grid-column: 1/-1; text-align: center;'>Не удалось загрузить товары.<br>Проверьте работу ngrok и bot.py</p>";
       }
     }
 
@@ -180,8 +185,13 @@
         const card = document.createElement("div");
         card.className = "product-card";
 
+        let imgUrl = product.img;
+        if (imgUrl.startsWith("/api/photo/")) {
+          imgUrl = NGROK_BASE_URL + imgUrl;
+        }
+
         card.innerHTML = `
-          <img class="product-img" src="${product.img}" alt="${product.title}" />
+          <img class="product-img" src="${imgUrl}" alt="${product.title}" onerror="this.src='https://via.placeholder.com/150'" />
           <div class="product-title">${product.title}</div>
           <div class="product-price">${product.price.toLocaleString()} сум</div>
           <div id="controls-${product.id}" style="width: 100%;">
@@ -224,7 +234,7 @@
         delete cart[id];
       }
       
-      const item = cart[id] || { id, count: 0 };
+      const item = cart[id] || { id, title: '', price: 0, count: 0 };
       updateCardUI(id, item.title, item.price);
       updateCartSummary();
     }
@@ -247,11 +257,6 @@
         total += item.price * item.count;
         totalCount += item.count;
       });
-
-      if (tg.MainButton) {
-        tg.MainButton.hide();
-        tg.MainButton.disable();
-      }
 
       if (totalCount > 0) {
         footer.classList.remove("hidden");
