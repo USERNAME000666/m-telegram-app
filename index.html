@@ -1,197 +1,158 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Каталог товаров</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--tg-theme-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #000000);
-            margin: 0;
-            padding: 16px;
-            padding-bottom: 80px;
-        }
+<!-- Нижняя панель внутри страницы (без использования tg.MainButton) -->
+  <div id="cart-footer" class="cart-footer hidden">
+    <div class="cart-summary">
+      <span>Итого:</span>
+      <span id="total-price">0 сум</span>
+    </div>
+    <button class="btn" style="padding: 12px; font-size: 16px;" onclick="sendOrder()">🛒 Оформить заказ</button>
+  </div>
 
-        h2 {
-            margin-top: 0;
-            font-size: 20px;
-            text-align: center;
-        }
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+    // Прячем системную нижнюю кнопку Телеграма, чтобы она не мешала
+    if (tg.MainButton) {
+      tg.MainButton.hide();
+    }
 
-        .products-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-        }
+    const API_URL = "https://traffic-nearby-squishier.ngrok-free.dev/api/products"; 
 
-        .card {
-            border: 1px solid var(--tg-theme-hint-color, #e0e0e0);
-            border-radius: 12px;
-            padding: 10px;
-            background: var(--tg-theme-secondary-bg-color, #f9f9f9);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-        }
+    let cart = {};
 
-        .card img {
-            width: 100%;
-            height: 100px;
-            object-fit: cover;
-            border-radius: 8px;
-            margin-bottom: 8px;
-        }
+    async function loadProducts() {
+      const container = document.getElementById("products-list");
+      container.innerHTML = "<p>Загрузка товаров...</p>";
 
-        .card .title {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 4px;
-        }
-
-        .card .price {
-            color: #2ea6ff;
-            font-weight: bold;
-            font-size: 14px;
-            margin-bottom: 8px;
-        }
-
-        .btn-add {
-            background-color: var(--tg-theme-button-color, #2481cc);
-            color: var(--tg-theme-button-text-color, #ffffff);
-            border: none;
-            border-radius: 8px;
-            padding: 6px 12px;
-            font-size: 13px;
-            cursor: pointer;
-            width: 100%;
-        }
-
-        .counter {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .counter button {
-            background-color: #e0e0e0;
-            border: none;
-            border-radius: 4px;
-            width: 24px;
-            height: 24px;
-            font-weight: bold;
-        }
-
-        #loading {
-            text-align: center;
-            font-size: 14px;
-            color: #888;
-            margin-top: 20px;
-        }
-    </style>
-</head>
-<body>
-
-    <h2>🛍️ Наш Каталог</h2>
-    <div id="loading">Загрузка товаров...</div>
-    <div class="products-grid" id="products-list"></div>
-
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.MainButton.setText("ОФОРМИТЬ ЗАКАЗ");
-        tg.MainButton.hide();
-
-        const API_URL = "https://traffic-nearby-squishier.ngrok-free.dev";
-
-        let cart = {};
-        let products = [];
-
-        async function fetchProducts() {
-            try {
-                const response = await fetch(`${API_URL}/api/products`, {
-                    headers: {
-                        "ngrok-skip-browser-warning": "true"
-                    }
-                });
-                products = await response.json();
-                document.getElementById('loading').style.display = 'none';
-                renderProducts();
-            } catch (error) {
-                console.error("Ошибка загрузки товаров:", error);
-                document.getElementById('loading').innerText = "⚠️ Ошибка подключения к серверу";
-            }
-        }
-
-        function renderProducts() {
-            const list = document.getElementById('products-list');
-            list.innerHTML = '';
-
-            products.forEach(p => {
-                const count = cart[p.id] ? cart[p.id].count : 0;
-                
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <img src="${p.img || 'https://via.placeholder.com/150'}" alt="${p.title}">
-                    <div class="title">#${p.id} ${p.title}</div>
-                    <div class="price">${p.price.toLocaleString()} сум</div>
-                    ${count === 0 
-                        ? `<button class="btn-add" onclick="addToCart(${p.id})">Добавить</button>`
-                        : `<div class="counter">
-                             <button onclick="changeCount(${p.id}, -1)">-</button>
-                             <span>${count}</span>
-                             <button onclick="changeCount(${p.id}, 1)">+</button>
-                           </div>`
-                    }
-                `;
-                list.appendChild(card);
-            });
-
-            updateMainButton();
-        }
-
-        function addToCart(id) {
-            const product = products.find(p => p.id === id);
-            cart[id] = { ...product, count: 1 };
-            renderProducts();
-        }
-
-        function changeCount(id, delta) {
-            if (cart[id]) {
-                cart[id].count += delta;
-                if (cart[id].count <= 0) {
-                    delete cart[id];
-                }
-            }
-            renderProducts();
-        }
-
-        function updateMainButton() {
-            const items = Object.values(cart);
-            if (items.length > 0) {
-                const total = items.reduce((sum, item) => sum + (item.price * item.count), 0);
-                tg.MainButton.setText(`ОФОРМИТЬ ЗАКАЗ (${total.toLocaleString()} сум)`);
-                tg.MainButton.show();
-            } else {
-                tg.MainButton.hide();
-            }
-        }
-
-        Telegram.WebApp.onEvent('mainButtonClicked', function() {
-            const items = Object.values(cart);
-            const total = items.reduce((sum, item) => sum + (item.price * item.count), 0);
-            
-            tg.sendData(JSON.stringify({
-                items: items,
-                total: total
-            }));
+      try {
+        const response = await fetch(API_URL, {
+          headers: { "ngrok-skip-browser-warning": "69420" }
         });
+        if (!response.ok) throw new Error("Ошибка сети: " + response.status);
+        const products = await response.json();
 
-        fetchProducts();
-    </script>
-</body>
-</html>
+        if (!products || products.length === 0) {
+          container.innerHTML = "<p>Товаров пока нет в базе.</p>";
+          return;
+        }
+        renderProducts(products);
+      } catch (err) {
+        console.error("Ошибка API:", err);
+        container.innerHTML = "<p style='color:red;'>Не удалось загрузить товары.</p>";
+      }
+    }
+
+    function renderProducts(products) {
+      const container = document.getElementById("products-list");
+      container.innerHTML = "";
+
+      products.forEach(product => {
+        const count = cart[product.id] ? cart[product.id].count : 0;
+        const card = document.createElement("div");
+        card.className = "product-card";
+
+        card.innerHTML = `
+          <img class="product-img" src="${product.img}" alt="${product.title}" />
+          <div class="product-title">${product.title}</div>
+          <div class="product-price">${product.price.toLocaleString()} сум</div>
+          <div id="controls-${product.id}" style="width: 100%;">
+            ${renderButtonControls(product, count)}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderButtonControls(product, count) {
+      if (count === 0) {
+        return `<button class="btn" onclick="addToCart(${product.id}, '${escapeHtml(product.title)}', ${product.price})">Добавить</button>`;
+      } else {
+        return `
+          <div class="quantity-controls">
+            <button class="btn-qty" onclick="changeQty(${product.id}, -1)">-</button>
+            <span>${count}</span>
+            <button class="btn-qty" onclick="changeQty(${product.id}, 1)">+</button>
+          </div>
+        `;
+      }
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/'/g, "\\'");
+    }
+
+    function addToCart(id, title, price) {
+      cart[id] = { id, title, price, count: 1 };
+      updateCardUI(id, title, price);
+      updateCartSummary();
+    }
+
+    function changeQty(id, delta) {
+      if (!cart[id]) return;
+
+      cart[id].count += delta;
+      if (cart[id].count <= 0) {
+        delete cart[id];
+      }
+      
+      const item = cart[id] || { id, count: 0 };
+      updateCardUI(id, item.title, item.price);
+      updateCartSummary();
+    }
+
+    function updateCardUI(id, title, price) {
+      const controlsDiv = document.getElementById(`controls-${id}`);
+      if (!controlsDiv) return;
+      const count = cart[id] ? cart[id].count : 0;
+      controlsDiv.innerHTML = renderButtonControls({ id, title, price }, count);
+    }
+
+    function updateCartSummary() {
+      const footer = document.getElementById("cart-footer");
+      const totalSpan = document.getElementById("total-price");
+
+      let total = 0;
+      let totalCount = 0;
+
+      Object.values(cart).forEach(item => {
+        total += item.price * item.count;
+        totalCount += item.count;
+      });
+
+      if (totalCount > 0) {
+        footer.classList.remove("hidden");
+        totalSpan.innerText = `${total.toLocaleString()} сум`;
+      } else {
+        footer.classList.add("hidden");
+      }
+    }
+
+    function sendOrder() {
+      const itemsArray = Object.values(cart).map(item => ({
+        id: item.id,
+        title: item.title,
+        price: item.price,
+        count: item.count
+      }));
+
+      if (itemsArray.length === 0) {
+        alert("Ваша корзина пуста!");
+        return;
+      }
+
+      let totalPrice = itemsArray.reduce((sum, item) => sum + item.price * item.count, 0);
+
+      const dataToSend = {
+        items: itemsArray,
+        total: totalPrice
+      };
+
+      try {
+        tg.sendData(JSON.stringify(dataToSend));
+        tg.close();
+      } catch (e) {
+        alert("Ошибка отправки! Запустите WebApp через кнопку в боте.");
+      }
+    }
+
+    loadProducts();
+  </script>
