@@ -7,12 +7,12 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root {
-      --bg-color: var(--tg-theme-bg-color, #ffffff);
-      --text-color: var(--tg-theme-text-color, #000000);
-      --hint-color: var(--tg-theme-hint-color, #888888);
-      --button-color: var(--tg-theme-button-color, #2481cc);
-      --button-text-color: var(--tg-theme-button-text-color, #ffffff);
-      --secondary-bg: var(--tg-theme-secondary-bg-color, #f4f4f5);
+      --bg-color: #ffffff;
+      --text-color: #000000;
+      --hint-color: #888888;
+      --button-color: #2481cc;
+      --button-text-color: #ffffff;
+      --secondary-bg: #f4f4f5;
     }
 
     body {
@@ -138,12 +138,12 @@
   </div>
 
   <script>
-    const tg = window.Telegram.WebApp;
-    tg.expand();
-
-    if (tg.MainButton) {
-      tg.MainButton.hide();
-      tg.MainButton.disable();
+    const tg = window.Telegram ? window.Telegram.WebApp : null;
+    if (tg) {
+      tg.expand();
+      if (tg.MainButton) {
+        tg.MainButton.hide();
+      }
     }
 
     const NGROK_BASE_URL = "https://traffic-nearby-squishier.ngrok-free.dev";
@@ -286,11 +286,15 @@
         total: totalPrice
       };
 
-      try {
-        tg.sendData(JSON.stringify(dataToSend));
-        tg.close();
-      } catch (e) {
-        alert("Ошибка отправки! Запустите магазин кнопкой из чата бота.");
+      if (tg && tg.sendData) {
+        try {
+          tg.sendData(JSON.stringify(dataToSend));
+          tg.close();
+        } catch (e) {
+          alert("Отправка не поддерживается в этом режиме открытия. Используйте кнопку меню бота.");
+        }
+      } else {
+        alert("Запустите WebApp внутри Telegram!");
       }
     }
 
