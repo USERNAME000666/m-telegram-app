@@ -138,11 +138,35 @@
   </div>
 
   <script>
+    // Внутри Telegram (особенно на телефоне) обычные DevTools недоступны.
+    // Добавьте ?debug=1 к ссылке WEBAPP_URL в bot.py, чтобы увидеть
+    // консоль прямо в интерфейсе Mini App и посмотреть реальные ошибки.
+    if (new URLSearchParams(window.location.search).get("debug") === "1") {
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/eruda";
+      s.onload = () => window.eruda && window.eruda.init();
+      document.body.appendChild(s);
+    }
+
     const tg = window.Telegram ? window.Telegram.WebApp : null;
     if (tg) {
       tg.expand();
       if (tg.MainButton) {
         tg.MainButton.hide();
+      }
+    }
+
+    // Обычный window.alert() внутри Telegram Mini App на многих
+    // мобильных клиентах либо блокируется, либо не показывается визуально.
+    // Поэтому все сообщения пользователю идут через tg.showAlert(),
+    // а alert() остаётся только как запасной вариант вне Telegram.
+    function showMessage(text, onClose) {
+      console.log("[showMessage]", text);
+      if (tg && typeof tg.showAlert === "function") {
+        tg.showAlert(text, onClose);
+      } else {
+        alert(text);
+        if (onClose) onClose();
       }
     }
 
@@ -275,7 +299,7 @@
   }));
 
   if (itemsArray.length === 0) {
-    alert("Ваша корзина пуста!");
+    showMessage("Ваша корзина пуста!");
     return;
   }
 
@@ -285,7 +309,7 @@
   const user = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
 
   if (!user) {
-    alert("Не удалось определить пользователя Telegram. Перезапустите Mini App.");
+    showMessage("Не удалось определить пользователя Telegram. Перезапустите Mini App.");
     return;
   }
 
@@ -295,6 +319,8 @@
     items: itemsArray,
     total: totalPrice
   };
+
+  console.log("[sendOrder] Отправляю заказ:", dataToSend, "на", `${NGROK_BASE_URL}/api/order`);
 
   try {
     const response = await fetch(`${NGROK_BASE_URL}/api/order`, {
@@ -306,15 +332,21 @@
       body: JSON.stringify(dataToSend)
     });
 
+    console.log("[sendOrder] Ответ сервера:", response.status);
+
     if (response.ok) {
-      alert("✅ Заказ успешно оформлен!");
-      if (tg) tg.close();
+      showMessage("✅ Заказ успешно оформлен!", () => {
+        if (tg) tg.close();
+      });
     } else {
-      alert("❌ Ошибка при оформлении заказа на сервере.");
+      let details = "";
+      try { details = await response.text(); } catch (e) {}
+      console.error("[sendOrder] Сервер вернул ошибку:", response.status, details);
+      showMessage(`❌ Ошибка при оформлении заказа на сервере (код ${response.status}).`);
     }
   } catch (err) {
-    console.error("Ошибка сети:", err);
-    alert("⚠️ Ошибка подключения к серверу ngrok.");
+    console.error("[sendOrder] Ошибка сети:", err);
+    showMessage("⚠️ Ошибка подключения к серверу. Проверьте, что ngrok и bot.py запущены, и что адрес NGROK_BASE_URL в коде актуален.");
   }
 }
 
