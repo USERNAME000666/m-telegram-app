@@ -266,37 +266,57 @@
       }
     }
 
-    function sendOrder() {
-      const itemsArray = Object.values(cart).map(item => ({
-        id: item.id,
-        title: item.title,
-        price: item.price,
-        count: item.count
-      }));
+  async function sendOrder() {
+  const itemsArray = Object.values(cart).map(item => ({
+    id: item.id,
+    title: item.title,
+    price: item.price,
+    count: item.count
+  }));
 
-      if (itemsArray.length === 0) {
-        alert("Ваша корзина пуста!");
-        return;
-      }
+  if (itemsArray.length === 0) {
+    alert("Ваша корзина пуста!");
+    return;
+  }
 
-      let totalPrice = itemsArray.reduce((sum, item) => sum + item.price * item.count, 0);
+  const totalPrice = itemsArray.reduce((sum, item) => sum + item.price * item.count, 0);
 
-      const dataToSend = {
-        items: itemsArray,
-        total: totalPrice
-      };
+  // Получаем user_id напрямую из объекта Telegram WebApp
+  const user = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
 
-      if (tg && tg.sendData) {
-        try {
-          tg.sendData(JSON.stringify(dataToSend));
-          tg.close();
-        } catch (e) {
-          alert("Отправка не поддерживается в этом режиме открытия. Используйте кнопку меню бота.");
-        }
-      } else {
-        alert("Запустите WebApp внутри Telegram!");
-      }
+  if (!user) {
+    alert("Не удалось определить пользователя Telegram. Перезапустите Mini App.");
+    return;
+  }
+
+  const dataToSend = {
+    user_id: user.id,
+    username: user.username || "",
+    items: itemsArray,
+    total: totalPrice
+  };
+
+  try {
+    const response = await fetch(`${NGROK_BASE_URL}/api/order`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "69420"
+      },
+      body: JSON.stringify(dataToSend)
+    });
+
+    if (response.ok) {
+      alert("✅ Заказ успешно оформлен!");
+      if (tg) tg.close();
+    } else {
+      alert("❌ Ошибка при оформлении заказа на сервере.");
     }
+  } catch (err) {
+    console.error("Ошибка сети:", err);
+    alert("⚠️ Ошибка подключения к серверу ngrok.");
+  }
+}
 
     loadProducts();
   </script>
