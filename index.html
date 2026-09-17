@@ -134,20 +134,10 @@
       <span>Итого:</span>
       <span id="total-price">0 сум</span>
     </div>
-    <button class="btn" style="padding: 12px; font-size: 16px;" onclick="sendOrder()">🛒 Оформить заказ</button>
+    <button id="submit-btn" class="btn" style="padding: 12px; font-size: 16px;" onclick="sendOrder()">🛒 Оформить заказ</button>
   </div>
 
   <script>
-    // Внутри Telegram (особенно на телефоне) обычные DevTools недоступны.
-    // Добавьте ?debug=1 к ссылке WEBAPP_URL в bot.py, чтобы увидеть
-    // консоль прямо в интерфейсе Mini App и посмотреть реальные ошибки.
-    if (new URLSearchParams(window.location.search).get("debug") === "1") {
-      const s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/npm/eruda";
-      s.onload = () => window.eruda && window.eruda.init();
-      document.body.appendChild(s);
-    }
-
     const tg = window.Telegram ? window.Telegram.WebApp : null;
     if (tg) {
       tg.expand();
@@ -156,20 +146,7 @@
       }
     }
 
-    // Обычный window.alert() внутри Telegram Mini App на многих
-    // мобильных клиентах либо блокируется, либо не показывается визуально.
-    // Поэтому все сообщения пользователю идут через tg.showAlert(),
-    // а alert() остаётся только как запасной вариант вне Telegram.
-    function showMessage(text, onClose) {
-      console.log("[showMessage]", text);
-      if (tg && typeof tg.showAlert === "function") {
-        tg.showAlert(text, onClose);
-      } else {
-        alert(text);
-        if (onClose) onClose();
-      }
-    }
-
+    // Укажите актуальный адрес ngrok
     const NGROK_BASE_URL = "https://traffic-nearby-squishier.ngrok-free.dev";
     const API_URL = `${NGROK_BASE_URL}/api/products`; 
 
@@ -290,65 +267,64 @@
       }
     }
 
-  async function sendOrder() {
-  const itemsArray = Object.values(cart).map(item => ({
-    id: item.id,
-    title: item.title,
-    price: item.price,
-    count: item.count
-  }));
+    async function sendOrder() {
+      const submitBtn = document.getElementById("submit-btn");
+      const itemsArray = Object.values(cart).map(item => ({
+        id: item.id,
+        title: item.title,
+        price: item.price,
+        count: item.count
+      }));
 
-  if (itemsArray.length === 0) {
-    showMessage("Ваша корзина пуста!");
-    return;
-  }
+      if (itemsArray.length === 0) {
+        alert("Ваша корзина пуста!");
+        return;
+      }
 
-  const totalPrice = itemsArray.reduce((sum, item) => sum + item.price * item.count, 0);
+      const totalPrice = itemsArray.reduce((sum, item) => sum + item.price * item.count, 0);
 
-  // Получаем user_id напрямую из объекта Telegram WebApp
-  const user = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
+      // Получаем ID пользователя из Telegram SDK
+      const user = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
 
-  if (!user) {
-    showMessage("Не удалось определить пользователя Telegram. Перезапустите Mini App.");
-    return;
-  }
+      if (!user) {
+        alert("Не удалось определить Telegram ID. Запустите Mini App через бот.");
+        return;
+      }
 
-  const dataToSend = {
-    user_id: user.id,
-    username: user.username || "",
-    items: itemsArray,
-    total: totalPrice
-  };
+      const dataToSend = {
+        user_id: user.id,
+        username: user.username || "",
+        items: itemsArray,
+        total: totalPrice
+      };
 
-  console.log("[sendOrder] Отправляю заказ:", dataToSend, "на", `${NGROK_BASE_URL}/api/order`);
+      submitBtn.disabled = true;
+      submitBtn.innerText = "Отправка...";
 
-  try {
-    const response = await fetch(`${NGROK_BASE_URL}/api/order`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "69420"
-      },
-      body: JSON.stringify(dataToSend)
-    });
+      try {
+        const response = await fetch(`${NGROK_BASE_URL}/api/order`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "69420"
+          },
+          body: JSON.stringify(dataToSend)
+        });
 
-    console.log("[sendOrder] Ответ сервера:", response.status);
-
-    if (response.ok) {
-      showMessage("✅ Заказ успешно оформлен!", () => {
-        if (tg) tg.close();
-      });
-    } else {
-      let details = "";
-      try { details = await response.text(); } catch (e) {}
-      console.error("[sendOrder] Сервер вернул ошибку:", response.status, details);
-      showMessage(`❌ Ошибка при оформлении заказа на сервере (код ${response.status}).`);
+        if (response.ok) {
+          if (tg) tg.close();
+        } else {
+          alert("Ошибка на сервере при создании заказа.");
+          submitBtn.disabled = false;
+          submitBtn.innerText = "🛒 Оформить заказ";
+        }
+      } catch (err) {
+        console.error("Ошибка сети:", err);
+        alert("Не удалось связаться с сервером ngrok.");
+        submitBtn.disabled = false;
+        submitBtn.innerText = "🛒 Оформить заказ";
+      }
     }
-  } catch (err) {
-    console.error("[sendOrder] Ошибка сети:", err);
-    showMessage("⚠️ Ошибка подключения к серверу. Проверьте, что ngrok и bot.py запущены, и что адрес NGROK_BASE_URL в коде актуален.");
-  }
-}
 
     loadProducts();
   </script>
