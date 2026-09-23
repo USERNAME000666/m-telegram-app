@@ -122,6 +122,22 @@
     .hidden { 
       display: none !important; 
     }
+
+    /* Стили для товара, которого нет в наличии */
+    .btn-disabled {
+      background-color: #cccccc !important;
+      color: #666666 !important;
+      cursor: not-allowed;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+      width: 100%;
+    }
+
+    .out-of-stock {
+      opacity: 0.65;
+    }
   </style>
 </head>
 <body>
@@ -184,7 +200,10 @@
       products.forEach(product => {
         const count = cart[product.id] ? cart[product.id].count : 0;
         const card = document.createElement("div");
-        card.className = "product-card";
+        
+        // Проверка наличия
+        const isInStock = product.in_stock !== false && product.in_stock !== 0;
+        card.className = `product-card ${!isInStock ? 'out-of-stock' : ''}`;
 
         let imgUrl = product.img;
         if (imgUrl.startsWith("/api/photo/")) {
@@ -196,14 +215,18 @@
           <div class="product-title">${product.title}</div>
           <div class="product-price">${product.price.toLocaleString()} сум</div>
           <div id="controls-${product.id}" style="width: 100%;">
-            ${renderButtonControls(product, count)}
+            ${renderButtonControls(product, count, isInStock)}
           </div>
         `;
         container.appendChild(card);
       });
     }
 
-    function renderButtonControls(product, count) {
+    function renderButtonControls(product, count, isInStock = true) {
+      if (!isInStock) {
+        return `<button disabled class="btn-disabled">Нет в наличии</button>`;
+      }
+
       if (count === 0) {
         return `<button class="btn" onclick="addToCart(${product.id}, '${escapeHtml(product.title)}', ${product.price})">Добавить</button>`;
       } else {
@@ -244,7 +267,7 @@
       const controlsDiv = document.getElementById(`controls-${id}`);
       if (!controlsDiv) return;
       const count = cart[id] ? cart[id].count : 0;
-      controlsDiv.innerHTML = renderButtonControls({ id, title, price }, count);
+      controlsDiv.innerHTML = renderButtonControls({ id, title, price }, count, true);
     }
 
     function updateCartSummary() {
@@ -283,7 +306,6 @@
 
       const totalPrice = itemsArray.reduce((sum, item) => sum + item.price * item.count, 0);
 
-      // Получаем ID пользователя из Telegram SDK
       const user = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
 
       if (!user) {
