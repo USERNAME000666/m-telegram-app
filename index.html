@@ -278,9 +278,9 @@
         tg.enableClosingConfirmation();
 
         // Базовый URL вашего API сервера Uvicorn/Pinggy
-        const API_URL = window.location.origin.includes('github') 
-            ? "https://your-pinggy-or-tunnel-url.loca.lt"  // Укажите ваш актуальный туннель Pinggy
-            : ""; 
+        // Замените значение API_URL на вашу текущую ссылку ngrok:
+
+         const API_URL = "https://traffic-nearby-squishier.ngrok-free.dev";
 
         let allProducts = [];
         let cart = {}; // { productId: count }
