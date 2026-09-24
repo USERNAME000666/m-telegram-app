@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>VELO TASH</title>
-    <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
@@ -13,7 +12,6 @@
             --accent-color: #00e5ff;
             --text-color: #ffffff;
             --text-muted: #8e8e93;
-            --danger-color: #ff3b30;
             --border-radius: 16px;
         }
 
@@ -32,7 +30,6 @@
             user-select: none;
         }
 
-        /* Шапка магазина */
         header {
             display: flex;
             flex-direction: column;
@@ -82,7 +79,6 @@
             margin-top: -2px;
         }
 
-        /* Поиск */
         .search-container {
             width: 100%;
             max-width: 500px;
@@ -106,7 +102,6 @@
             background: rgba(255, 255, 255, 0.08);
         }
 
-        /* Сетка товаров */
         .products-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -124,7 +119,7 @@
             flex-direction: column;
             justify-content: space-between;
             border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: transform 0.2s ease, border-color 0.2s ease;
+            transition: transform 0.2s ease;
             position: relative;
             overflow: hidden;
         }
@@ -185,7 +180,6 @@
             backdrop-filter: blur(4px);
         }
 
-        /* Кнопки управления корзиной */
         .cart-controls {
             display: flex;
             align-items: center;
@@ -205,7 +199,6 @@
             font-weight: 700;
             font-size: 13px;
             cursor: pointer;
-            transition: opacity 0.2s;
         }
 
         .btn-add:disabled {
@@ -235,16 +228,7 @@
             color: #fff;
         }
 
-        /* Лоадер */
-        .loader {
-            text-align: center;
-            padding: 40px;
-            color: var(--text-muted);
-            font-size: 14px;
-            grid-column: span 2;
-        }
-
-        .empty-state {
+        .loader, .empty-state {
             text-align: center;
             padding: 40px 20px;
             color: var(--text-muted);
@@ -276,13 +260,12 @@
         tg.expand();
         tg.enableClosingConfirmation();
 
-        // Текущий адрес Ngrok
+        // Укажите ваш актуальный URL Ngrok
         const API_URL = "https://traffic-nearby-squishier.ngrok-free.dev";
 
         let allProducts = [];
         let cart = {}; 
 
-        // Загрузка товаров
         async function fetchProducts() {
             try {
                 const res = await fetch(`${API_URL}/api/products`, {
@@ -290,14 +273,15 @@
                         'ngrok-skip-browser-warning': 'true'
                     }
                 });
-                if (!res.ok) throw new Error(`Ошибка HTTP: ${res.status}`);
+                if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
                 allProducts = await res.json();
                 renderProducts(allProducts);
             } catch (err) {
-                console.error(err);
+                console.error("Fetch error:", err);
                 document.getElementById('productsGrid').innerHTML = `
                     <div class="empty-state">
-                        ⚠️ Не удалось загрузить товары.<br>Детали: ${err.message}
+                        ⚠️ Не удалось загрузить товары.<br>
+                        <small style="color:#888;">${err.message}</small>
                     </div>`;
             }
         }
@@ -312,7 +296,7 @@
             grid.innerHTML = products.map(p => {
                 const qty = cart[p.id] || 0;
                 const isAvailable = p.in_stock !== false && p.in_stock !== 0;
-                const imgPath = p.img.startsWith('/') ? `${API_URL}${p.img}` : p.img;
+                const imgPath = p.img && p.img.startsWith('/') ? `${API_URL}${p.img}` : (p.img || '');
 
                 return `
                     <div class="product-card">
@@ -383,7 +367,6 @@
             }
         }
 
-        // Клик по главной кнопке Telegram "Оформить заказ"
         tg.MainButton.onClick(async () => {
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
@@ -426,7 +409,7 @@
                 if (res.ok) {
                     tg.close();
                 } else {
-                    alert('Ошибка оформления заказа. Попробуйте еще раз.');
+                    alert('Ошибка оформления заказа.');
                     tg.MainButton.hideProgress();
                 }
             } catch (e) {
@@ -435,7 +418,6 @@
             }
         });
 
-        // Запуск
         fetchProducts();
     </script>
 </body>
