@@ -13,7 +13,6 @@
             --hint-color: var(--tg-theme-hint-color, #6c757d);
             --button-color: var(--tg-theme-button-color, #007bff);
             --button-text-color: var(--tg-theme-button-text-color, #ffffff);
-            --accent-red: #dc3545;
         }
 
         * {
@@ -191,6 +190,9 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
+        // Ваш текущий домен ngrok
+        const API_BASE_URL = "https://traffic-nearby-squishier.ngrok-free.dev";
+
         let allProducts = [];
         let cart = {}; // { productId: qty }
         let selectedCategory = 'Все';
@@ -201,7 +203,11 @@
 
         async function loadProducts() {
             try {
-                const response = await fetch('/api/products');
+                const response = await fetch(`${API_BASE_URL}/api/products`, {
+                    headers: {
+                        'ngrok-skip-browser-warning': 'true'
+                    }
+                });
                 allProducts = await response.json();
                 document.getElementById('loader').style.display = 'none';
                 renderCategories();
@@ -320,9 +326,12 @@
             };
 
             try {
-                const response = await fetch('/api/order', {
+                const response = await fetch(`${API_BASE_URL}/api/order`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
                     body: JSON.stringify(orderData)
                 });
 
